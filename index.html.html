@@ -1,0 +1,701 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Stock Order Tickets</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#20242A;
+    --bg-alt:#2A2F37;
+    --paper:#FAF6EE;
+    --paper-line:#E4DAC4;
+    --ink:#26241F;
+    --ink-soft:#7A7568;
+    --danger:#C1503A;
+    --danger-soft:rgba(193,80,58,0.1);
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0;
+    min-height:100vh;
+    background:
+      radial-gradient(circle at 15% 0%, rgba(31,158,150,0.10), transparent 40%),
+      radial-gradient(circle at 85% 100%, rgba(155,123,209,0.08), transparent 40%),
+      var(--bg);
+    font-family:'Space Grotesk', sans-serif;
+    color:var(--ink);
+    display:flex;
+    justify-content:center;
+    padding:36px 16px 60px;
+  }
+  .app{width:100%; max-width:760px;}
+
+  /* ---------- Banner ---------- */
+  .storage-banner{
+    display:none; background:#4A2E17; border:1.5px solid #B5772C; color:#FBE4C4; border-radius:10px;
+    padding:12px 14px; font-family:'Space Grotesk'; font-size:0.82rem; line-height:1.5; margin-bottom:18px;
+  }
+  .storage-banner strong{color:#FFD79A;}
+  .storage-banner code{background:rgba(0,0,0,0.25); padding:1px 5px; border-radius:4px; font-family:'IBM Plex Mono';}
+
+  /* ---------- Header ---------- */
+  header.top{margin-bottom:22px;}
+  .shop-row{display:flex; align-items:baseline; gap:10px; flex-wrap:wrap;}
+  .shop-name-input{
+    background:transparent; border:none; border-bottom:2px dashed rgba(250,246,238,0.28);
+    font-family:'Space Grotesk'; font-weight:700; font-size:1.5rem; color:#FAF6EE;
+    padding:4px 2px; min-width:200px; max-width:100%;
+  }
+  .shop-name-input::placeholder{color:rgba(250,246,238,0.4); font-weight:500;}
+  .shop-name-input:focus{outline:none; border-bottom-color:#1F9E96;}
+  .eyebrow{
+    font-family:'IBM Plex Mono'; font-size:0.72rem; letter-spacing:0.14em; text-transform:uppercase;
+    color:#8E9AA3; margin:6px 0 0;
+  }
+
+  /* ---------- Tabs row + status ---------- */
+  .tabs-row{display:flex; align-items:flex-end; justify-content:space-between; margin-top:22px; padding:0 2px; gap:10px;}
+  .tabs{display:flex; gap:6px; overflow-x:auto; -webkit-overflow-scrolling:touch; scrollbar-width:none;}
+  .tabs::-webkit-scrollbar{display:none;}
+  .status-row{
+    display:flex; align-items:center; gap:6px; font-family:'IBM Plex Mono'; font-size:0.72rem;
+    color:#9CA6AE; flex-shrink:0; margin-bottom:10px; white-space:nowrap;
+  }
+  .status-dot{width:8px; height:8px; border-radius:50%; background:var(--danger); flex-shrink:0;}
+  .status-dot.connected{background:#3FAE6B;}
+  .tab{
+    position:relative; padding:12px 16px 14px; font-family:'Space Grotesk'; font-weight:600; font-size:0.88rem;
+    border:none; cursor:pointer; background:var(--bg-alt); color:#9CA6AE; white-space:nowrap; flex-shrink:0;
+    border-radius:10px 10px 0 0; transition: background .18s ease, color .18s ease;
+  }
+  .tab:hover{color:#D3DADD;}
+  .tab.active{background:var(--paper);}
+  .tab-dot{display:inline-block; width:7px; height:7px; border-radius:50%; margin-right:7px; position:relative; top:-1px;}
+
+  .tab[data-type="general"] .tab-dot{background:#1F9E96;}
+  .tab[data-type="lcd"] .tab-dot{background:#E8A33D;}
+  .tab[data-type="battery"] .tab-dot{background:#4A8BC9;}
+  .tab[data-type="backglass"] .tab-dot{background:#9B7BD1;}
+  .tab[data-type="cases"] .tab-dot{background:#6FA86A;}
+  .tab[data-type="glassprotectors"] .tab-dot{background:#3FBAC9;}
+  .tab[data-type="cables"] .tab-dot{background:#CD6B95;}
+  .tab[data-type="generalparts"] .tab-dot{background:#B98F5E;}
+
+  .tab.active[data-type="general"]{color:#136259;}
+  .tab.active[data-type="lcd"]{color:#8C5A0E;}
+  .tab.active[data-type="battery"]{color:#234F7A;}
+  .tab.active[data-type="backglass"]{color:#5B3888;}
+  .tab.active[data-type="cases"]{color:#355C33;}
+  .tab.active[data-type="glassprotectors"]{color:#155F69;}
+  .tab.active[data-type="cables"]{color:#7A3355;}
+  .tab.active[data-type="generalparts"]{color:#6B4E2A;}
+
+  /* ---------- Ticket card ---------- */
+  .ticket{
+    background:var(--paper); border-radius:0 12px 12px 12px; overflow:hidden;
+    box-shadow:0 20px 44px -14px rgba(0,0,0,0.5);
+  }
+  .ticket.type-general{ --accent:#1F9E96; --accent-btn:#178077; --accent-text:#fff; }
+  .ticket.type-lcd{ --accent:#E8A33D; --accent-btn:#E8A33D; --accent-text:#3A2A05; }
+  .ticket.type-battery{ --accent:#4A8BC9; --accent-btn:#2E6BA0; --accent-text:#fff; }
+  .ticket.type-backglass{ --accent:#9B7BD1; --accent-btn:#7A4FB0; --accent-text:#fff; }
+  .ticket.type-cases{ --accent:#6FA86A; --accent-btn:#4A7A47; --accent-text:#fff; }
+  .ticket.type-glassprotectors{ --accent:#3FBAC9; --accent-btn:#1F8695; --accent-text:#fff; }
+  .ticket.type-cables{ --accent:#CD6B95; --accent-btn:#A84770; --accent-text:#fff; }
+  .ticket.type-generalparts{ --accent:#B98F5E; --accent-btn:#8C6A3E; --accent-text:#fff; }
+
+  .ticket-accent{height:5px; background:var(--accent);}
+  .ticket-body{padding:22px 22px 20px;}
+
+  @media (prefers-reduced-motion: no-preference){
+    .ticket-body{animation: fadeIn .25s ease;}
+  }
+  @keyframes fadeIn{from{opacity:0; transform:translateY(4px);} to{opacity:1; transform:translateY(0);}}
+
+  .table-wrap{overflow-x:auto;}
+  table.list-table{width:100%; border-collapse:collapse; font-family:'IBM Plex Mono'; font-size:0.88rem; min-width:420px;}
+  .list-table thead th{
+    text-align:left; font-size:0.66rem; letter-spacing:0.1em; text-transform:uppercase; font-weight:600;
+    color:var(--ink-soft); padding:0 4px 8px; border-bottom:1px dashed var(--paper-line);
+  }
+  .list-table thead th.qty, .list-table td.qty{text-align:right;}
+  .list-table thead th.actions-col{width:64px;}
+  .list-table td{padding:11px 4px; border-bottom:1px dashed var(--paper-line); vertical-align:middle;}
+  .list-table td.qty{font-weight:600;}
+  .list-table td.date{color:var(--ink-soft); font-size:0.8rem; white-space:nowrap;}
+  .list-table td.actions-cell{white-space:nowrap; text-align:right;}
+  .row-btn{
+    background:none; border:none; cursor:pointer; font-size:0.95rem;
+    width:26px; height:26px; border-radius:7px; line-height:1;
+  }
+  .edit-btn{color:var(--ink-soft);}
+  .edit-btn:hover{background:rgba(0,0,0,0.06);}
+  .remove-btn{color:var(--danger);}
+  .remove-btn:hover{background:var(--danger-soft);}
+  .save-btn{color:var(--accent-btn);}
+  .save-btn:hover{background:rgba(0,0,0,0.08);}
+  .cancel-btn{color:var(--ink-soft);}
+  .cancel-btn:hover{background:rgba(0,0,0,0.06);}
+  .edit-input{
+    font-family:'IBM Plex Mono'; font-size:0.85rem; padding:6px 8px; border:1.5px solid var(--accent);
+    border-radius:6px; width:100%; background:#fff;
+  }
+  .edit-input.edit-qty{width:64px; text-align:right;}
+
+  .empty-state{
+    border:1.5px dashed var(--paper-line); border-radius:10px; padding:22px 16px; text-align:center;
+    color:var(--ink-soft); font-family:'IBM Plex Mono'; font-size:0.85rem; font-style:italic; margin-bottom:4px;
+  }
+
+  /* ---------- Add row ---------- */
+  .add-row{display:flex; gap:8px; margin-top:16px; flex-wrap:wrap;}
+  .add-row input[type="text"]{flex:1; min-width:160px;}
+  .add-row input[type="number"]{width:88px;}
+  .ticket input[type="text"], .ticket input[type="number"]{
+    font-family:'IBM Plex Mono'; font-size:0.9rem; padding:10px 11px; border:1.5px solid var(--paper-line);
+    border-radius:8px; background:#fff; color:var(--ink);
+  }
+  .ticket input[type="text"]:focus, .ticket input[type="number"]:focus{outline:none; border-color:var(--accent);}
+
+  .btn{
+    font-family:'Space Grotesk'; font-weight:600; border:none; border-radius:8px; padding:10px 18px;
+    cursor:pointer; font-size:0.87rem; transition:filter .15s ease, background .15s ease;
+  }
+  .btn:hover{filter:brightness(0.95);}
+  .btn:active{filter:brightness(0.88);}
+  .btn-add{background:var(--accent-btn); color:var(--accent-text);}
+  .btn-ghost{background:transparent; border:1.5px solid var(--paper-line); color:var(--ink-soft);}
+  .btn-ghost:hover{background:rgba(0,0,0,0.03);}
+  .btn-primary{background:var(--ink); color:var(--paper);}
+  .btn-primary:hover{background:#3a372e;}
+
+  /* ---------- Footer ---------- */
+  .ticket-footer{
+    display:flex; align-items:center; justify-content:space-between; gap:12px; flex-wrap:wrap;
+    margin-top:18px; padding-top:14px; border-top:2px dashed var(--paper-line);
+  }
+  .totals{font-family:'IBM Plex Mono'; font-size:0.82rem; color:var(--ink-soft);}
+  .totals strong{color:var(--ink); font-weight:600;}
+  .footer-actions{display:flex; gap:10px; flex-wrap:wrap;}
+
+  footer.hint{
+    text-align:center; margin-top:18px; font-family:'IBM Plex Mono'; font-size:0.74rem; color:#6E7882;
+  }
+
+  /* ---------- Toast ---------- */
+  .toast{
+    position:fixed; bottom:20px; left:50%; transform:translate(-50%, 16px); background:#26282B; color:#FAF6EE;
+    padding:12px 18px; border-radius:10px; font-family:'Space Grotesk'; font-size:0.85rem;
+    box-shadow:0 12px 30px rgba(0,0,0,0.35); opacity:0; transition:all .25s ease; pointer-events:none;
+    max-width:90vw; text-align:center; z-index:60;
+  }
+  .toast.show{opacity:1; transform:translate(-50%, 0);}
+
+  /* ---------- Modal ---------- */
+  .modal-overlay{
+    position:fixed; inset:0; background:rgba(18,20,23,0.55); display:flex; align-items:center; justify-content:center;
+    opacity:0; pointer-events:none; transition:opacity .18s ease; z-index:70; padding:16px;
+  }
+  .modal-overlay.show{opacity:1; pointer-events:auto;}
+  .modal{background:var(--paper); border-radius:12px; padding:22px; max-width:320px; width:100%; box-shadow:0 24px 60px rgba(0,0,0,0.4);}
+  .modal h3{font-family:'Space Grotesk'; margin:0 0 8px; font-size:1.02rem;}
+  .modal p{font-size:0.86rem; color:var(--ink-soft); margin:0 0 18px; line-height:1.45;}
+  .modal-actions{display:flex; justify-content:flex-end; gap:8px;}
+
+  @media (max-width:480px){
+    .ticket-body{padding:18px 16px 16px;}
+    .shop-name-input{font-size:1.25rem;}
+    .footer-actions{width:100%; justify-content:flex-end;}
+  }
+</style>
+</head>
+<body>
+
+<div class="app">
+  <div class="storage-banner" id="storageBanner">
+    <strong>⚠️ Not connected yet.</strong> This page needs your Firebase details pasted into the code before saving and syncing will work. Open the file, find the <code>firebaseConfig</code> block near the bottom, and paste in your own values from the Firebase console.
+  </div>
+
+  <header class="top">
+    <div class="shop-row">
+      <input id="shopNameInput" class="shop-name-input" type="text" placeholder="Enter your shop name" maxlength="60">
+    </div>
+    <p class="eyebrow">Stock Order Tickets</p>
+  </header>
+
+  <div class="tabs-row">
+    <div class="tabs" id="tabsContainer"></div>
+    <div class="status-row">
+      <span class="status-dot" id="statusDot"></span>
+      <span id="statusText">Connecting…</span>
+    </div>
+  </div>
+
+  <div class="ticket type-general" id="ticket">
+    <div class="ticket-accent"></div>
+    <div class="ticket-body">
+
+      <div class="table-wrap">
+        <table class="list-table">
+          <thead>
+            <tr>
+              <th>Item</th>
+              <th class="qty">Qty</th>
+              <th>Date added</th>
+              <th class="actions-col"></th>
+            </tr>
+          </thead>
+          <tbody id="itemsBody"></tbody>
+        </table>
+      </div>
+
+      <div class="empty-state" id="emptyState">No items yet — add the first part below.</div>
+
+      <form id="addForm" class="add-row">
+        <input type="text" id="itemNameInput" placeholder="Item name" maxlength="80" required>
+        <input type="number" id="itemQtyInput" min="1" step="1" value="1" required>
+        <button type="submit" class="btn btn-add" id="addBtn">Add</button>
+      </form>
+
+      <div class="ticket-footer">
+        <div class="totals" id="totalsText">0 items</div>
+        <div class="footer-actions">
+          <button class="btn btn-ghost" id="clearBtn">Clear list</button>
+          <button class="btn btn-primary" id="saveBtn">Save as PDF</button>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <footer class="hint">Shared with anyone who opens this same web address — changes appear on every device instantly.</footer>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<div class="modal-overlay" id="confirmOverlay">
+  <div class="modal">
+    <h3 id="confirmTitle">Clear this list?</h3>
+    <p id="confirmText">This removes all items from the list. This can't be undone.</p>
+    <div class="modal-actions">
+      <button class="btn btn-ghost" id="confirmCancel">Cancel</button>
+      <button class="btn btn-primary" id="confirmYes">Clear list</button>
+    </div>
+  </div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
+
+<!-- Firebase (free tier). See the setup steps Claude gave you for how to fill in firebaseConfig below. -->
+<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-database-compat.js"></script>
+
+<script>
+(function(){
+  "use strict";
+
+  // ================================================================
+  // PASTE YOUR OWN FIREBASE CONFIG HERE (from console.firebase.google.com
+  // → Project settings → General → "Your apps" → SDK setup and configuration)
+  // ================================================================
+  var firebaseConfig = {
+    apiKey: "AIzaSyCEfjXvyAt2UQ5t7_KHboTIZBzMmKMlPwY",
+    authDomain: "orderr-list.firebaseapp.com",
+    databaseURL: "https://orderr-list-default-rtdb.firebaseio.com",
+    projectId: "orderr-list",
+    storageBucket: "orderr-list.firebasestorage.app",
+    messagingSenderId: "175063578935",
+    appId: "1:175063578935:web:d30faf0399243aea7e42b2"
+  };
+  // ================================================================
+
+  // ---------- Config: add/remove list categories here ----------
+  var LIST_TYPES = [
+    { id:'general',         tabLabel:'General List',          shortLabel:'General',          pdfTitle:'General Stock Order List',          filePrefix:'General',         pdfAccent:[23,128,119] },
+    { id:'lcd',             tabLabel:'LCD Parts List',         shortLabel:'LCD Parts',        pdfTitle:'LCD Parts Order List',              filePrefix:'LCD',             pdfAccent:[232,163,61] },
+    { id:'battery',         tabLabel:'Battery Parts List',     shortLabel:'Battery Parts',    pdfTitle:'Battery Parts Order List',          filePrefix:'Battery',         pdfAccent:[46,107,160] },
+    { id:'backglass',       tabLabel:'Back Glass List',        shortLabel:'Back Glass',       pdfTitle:'Back Glass Order List',             filePrefix:'BackGlass',       pdfAccent:[122,79,176] },
+    { id:'cases',           tabLabel:'Cases List',             shortLabel:'Cases',            pdfTitle:'Cases Order List',                  filePrefix:'Cases',           pdfAccent:[74,122,71] },
+    { id:'glassprotectors', tabLabel:'Glass Protectors List',  shortLabel:'Glass Protectors', pdfTitle:'Glass Protectors Order List',       filePrefix:'GlassProtectors', pdfAccent:[31,134,149] },
+    { id:'cables',          tabLabel:'Cables List',            shortLabel:'Cables',           pdfTitle:'Cables Order List',                 filePrefix:'Cables',          pdfAccent:[168,71,112] },
+    { id:'generalparts',    tabLabel:'Phone Parts List',       shortLabel:'Phone Parts',      pdfTitle:'Phone Parts Order List',            filePrefix:'PhoneParts',      pdfAccent:[140,106,62] }
+  ];
+
+  function typeConfig(id){
+    for(var i=0;i<LIST_TYPES.length;i++){ if(LIST_TYPES[i].id === id) return LIST_TYPES[i]; }
+    return LIST_TYPES[0];
+  }
+
+  // ---------- State ----------
+  var lists = {};
+  LIST_TYPES.forEach(function(t){ lists[t.id] = []; });
+  var shopName = "";
+  var activeType = LIST_TYPES[0].id;
+  var pendingClearType = null;
+  var editingId = null;
+
+  // ---------- DOM ----------
+  var shopNameInput = document.getElementById('shopNameInput');
+  var tabsContainer = document.getElementById('tabsContainer');
+  var ticket = document.getElementById('ticket');
+  var itemsBody = document.getElementById('itemsBody');
+  var emptyState = document.getElementById('emptyState');
+  var addForm = document.getElementById('addForm');
+  var itemNameInput = document.getElementById('itemNameInput');
+  var itemQtyInput = document.getElementById('itemQtyInput');
+  var addBtn = document.getElementById('addBtn');
+  var totalsText = document.getElementById('totalsText');
+  var clearBtn = document.getElementById('clearBtn');
+  var saveBtn = document.getElementById('saveBtn');
+  var toast = document.getElementById('toast');
+  var confirmOverlay = document.getElementById('confirmOverlay');
+  var confirmTitle = document.getElementById('confirmTitle');
+  var confirmText = document.getElementById('confirmText');
+  var confirmCancel = document.getElementById('confirmCancel');
+  var confirmYes = document.getElementById('confirmYes');
+  var storageBanner = document.getElementById('storageBanner');
+  var statusDot = document.getElementById('statusDot');
+  var statusText = document.getElementById('statusText');
+
+  // ---------- Helpers ----------
+  function pad(n){ return String(n).padStart(2,'0'); }
+  function todayIso(){
+    var d = new Date();
+    return d.getFullYear() + '-' + pad(d.getMonth()+1) + '-' + pad(d.getDate());
+  }
+  function displayDate(){
+    var months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+    var d = new Date();
+    return pad(d.getDate()) + ' ' + months[d.getMonth()] + ' ' + d.getFullYear();
+  }
+
+  var toastTimer = null;
+  function showToast(msg){
+    toast.textContent = msg;
+    toast.classList.add('show');
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(function(){ toast.classList.remove('show'); }, 3200);
+  }
+
+  // ---------- Firebase setup ----------
+  var isConfigured = firebaseConfig.apiKey.indexOf('REPLACE_WITH_') !== 0;
+  var db = null;
+
+  if(!isConfigured){
+    storageBanner.style.display = 'block';
+    statusText.textContent = 'Not configured';
+  }else{
+    firebase.initializeApp(firebaseConfig);
+    db = firebase.database();
+
+    db.ref('.info/connected').on('value', function(snap){
+      var connected = snap.val() === true;
+      statusDot.classList.toggle('connected', connected);
+      statusText.textContent = connected ? 'Live' : 'Offline';
+    });
+
+    db.ref('shopName').on('value', function(snap){
+      var val = snap.val() || '';
+      if(document.activeElement !== shopNameInput){
+        shopName = val;
+        shopNameInput.value = val;
+      }
+    });
+
+    LIST_TYPES.forEach(function(t){
+      db.ref('lists/' + t.id).on('value', function(snap){
+        var val = snap.val() || {};
+        var keys = Object.keys(val).sort();
+        lists[t.id] = keys.map(function(k){
+          var item = val[k];
+          return { id: k, name: item.name, qty: item.qty, date: item.date, iso: item.iso };
+        });
+        render();
+      });
+    });
+  }
+
+  function saveShopName(){
+    var val = shopNameInput.value.trim();
+    shopName = val;
+    if(!db) return;
+    db.ref('shopName').set(val).catch(function(){ showToast("Couldn't save shop name — check your connection."); });
+  }
+
+  // ---------- Tabs ----------
+  function buildTabs(){
+    tabsContainer.innerHTML = '';
+    LIST_TYPES.forEach(function(t){
+      var btn = document.createElement('button');
+      btn.className = 'tab' + (t.id === activeType ? ' active' : '');
+      btn.setAttribute('data-type', t.id);
+      btn.type = 'button';
+
+      var dot = document.createElement('span');
+      dot.className = 'tab-dot';
+      btn.appendChild(dot);
+      btn.appendChild(document.createTextNode(t.tabLabel));
+
+      btn.addEventListener('click', function(){ switchTab(t.id); });
+      tabsContainer.appendChild(btn);
+    });
+  }
+
+  // ---------- Render ----------
+  function render(){
+    buildTabs();
+    ticket.className = 'ticket type-' + activeType;
+
+    var items = lists[activeType];
+
+    itemsBody.innerHTML = '';
+    if(items.length === 0){
+      emptyState.style.display = 'block';
+    }else{
+      emptyState.style.display = 'none';
+      items.forEach(function(it){
+        var tr = document.createElement('tr');
+        var isEditing = (it.id === editingId);
+
+        var tdName = document.createElement('td');
+        var tdQty = document.createElement('td');
+        tdQty.className = 'qty';
+        var tdDate = document.createElement('td');
+        tdDate.className = 'date';
+        tdDate.textContent = it.date;
+        var tdActions = document.createElement('td');
+        tdActions.className = 'actions-cell';
+
+        if(isEditing){
+          var nameInput = document.createElement('input');
+          nameInput.type = 'text';
+          nameInput.className = 'edit-input edit-name';
+          nameInput.value = it.name;
+          nameInput.maxLength = 80;
+          tdName.appendChild(nameInput);
+
+          var qtyInput = document.createElement('input');
+          qtyInput.type = 'number';
+          qtyInput.className = 'edit-input edit-qty';
+          qtyInput.min = 1;
+          qtyInput.step = 1;
+          qtyInput.value = it.qty;
+          tdQty.appendChild(qtyInput);
+
+          var doSave = function(){ saveEdit(it.id, nameInput.value, qtyInput.value); };
+          [nameInput, qtyInput].forEach(function(inp){
+            inp.addEventListener('keydown', function(e){
+              if(e.key === 'Enter'){ e.preventDefault(); doSave(); }
+              else if(e.key === 'Escape'){ e.preventDefault(); cancelEdit(); }
+            });
+          });
+
+          var saveBtnEl = document.createElement('button');
+          saveBtnEl.className = 'row-btn save-btn';
+          saveBtnEl.type = 'button';
+          saveBtnEl.title = 'Save changes';
+          saveBtnEl.textContent = '✓';
+          saveBtnEl.addEventListener('click', doSave);
+
+          var cancelBtnEl = document.createElement('button');
+          cancelBtnEl.className = 'row-btn cancel-btn';
+          cancelBtnEl.type = 'button';
+          cancelBtnEl.title = 'Cancel';
+          cancelBtnEl.textContent = '✕';
+          cancelBtnEl.addEventListener('click', cancelEdit);
+
+          tdActions.appendChild(saveBtnEl);
+          tdActions.appendChild(cancelBtnEl);
+        }else{
+          tdName.textContent = it.name;
+          tdQty.textContent = it.qty;
+
+          var editBtnEl = document.createElement('button');
+          editBtnEl.className = 'row-btn edit-btn';
+          editBtnEl.type = 'button';
+          editBtnEl.title = 'Edit item';
+          editBtnEl.textContent = '✎';
+          editBtnEl.addEventListener('click', function(){ startEdit(it.id); });
+
+          var removeBtnEl = document.createElement('button');
+          removeBtnEl.className = 'row-btn remove-btn';
+          removeBtnEl.type = 'button';
+          removeBtnEl.title = 'Remove item';
+          removeBtnEl.textContent = '✕';
+          removeBtnEl.addEventListener('click', function(){ removeItem(it.id); });
+
+          tdActions.appendChild(editBtnEl);
+          tdActions.appendChild(removeBtnEl);
+        }
+
+        tr.appendChild(tdName);
+        tr.appendChild(tdQty);
+        tr.appendChild(tdDate);
+        tr.appendChild(tdActions);
+        itemsBody.appendChild(tr);
+
+        if(isEditing){
+          setTimeout(function(){ nameInput.focus(); nameInput.select(); }, 0);
+        }
+      });
+    }
+
+    var totalQty = items.reduce(function(sum, it){ return sum + Number(it.qty); }, 0);
+    totalsText.innerHTML = items.length + ' item' + (items.length === 1 ? '' : 's') +
+      ' &middot; <strong>' + totalQty + '</strong> unit' + (totalQty === 1 ? '' : 's') + ' total';
+  }
+
+  // ---------- Actions ----------
+  function switchTab(type){
+    activeType = type;
+    editingId = null;
+    itemNameInput.value = '';
+    itemQtyInput.value = '1';
+    render();
+  }
+
+  function startEdit(id){
+    editingId = id;
+    render();
+  }
+
+  function cancelEdit(){
+    editingId = null;
+    render();
+  }
+
+  function saveEdit(id, nameVal, qtyVal){
+    var name = (nameVal || '').trim();
+    var qty = parseInt(qtyVal, 10);
+    if(!name){ showToast('Item name cannot be empty.'); return; }
+    if(!qty || qty < 1) qty = 1;
+    editingId = null;
+
+    if(!db){ showToast('Not connected — see the setup banner above.'); render(); return; }
+    db.ref('lists/' + activeType + '/' + id).update({ name: name, qty: qty })
+      .then(function(){ showToast('Item updated.'); })
+      .catch(function(){ showToast("Couldn't save — check your connection."); });
+    render();
+  }
+
+  function addItem(e){
+    e.preventDefault();
+    var name = itemNameInput.value.trim();
+    var qty = parseInt(itemQtyInput.value, 10);
+    if(!name){ itemNameInput.focus(); return; }
+    if(!qty || qty < 1) qty = 1;
+
+    if(!db){ showToast('Not connected — see the setup banner above.'); return; }
+
+    db.ref('lists/' + activeType).push({
+      name: name,
+      qty: qty,
+      date: displayDate(),
+      iso: todayIso()
+    }).catch(function(){ showToast("Couldn't save — check your connection."); });
+
+    itemNameInput.value = '';
+    itemQtyInput.value = '1';
+    itemNameInput.focus();
+  }
+
+  function removeItem(id){
+    if(!db) return;
+    db.ref('lists/' + activeType + '/' + id).remove()
+      .catch(function(){ showToast("Couldn't remove item — check your connection."); });
+  }
+
+  function openClearConfirm(){
+    pendingClearType = activeType;
+    confirmTitle.textContent = 'Clear ' + typeConfig(activeType).shortLabel + ' list?';
+    confirmText.textContent = "This removes all items from this list. This can't be undone.";
+    confirmYes.textContent = 'Clear list';
+    confirmOverlay.classList.add('show');
+  }
+  function closeConfirm(){
+    confirmOverlay.classList.remove('show');
+    pendingClearType = null;
+  }
+  function confirmClearAction(){
+    var type = pendingClearType;
+    closeConfirm();
+    if(!type || !db) return;
+    if(type === activeType) editingId = null;
+    db.ref('lists/' + type).remove()
+      .then(function(){ showToast(typeConfig(type).shortLabel + ' list cleared.'); })
+      .catch(function(){ showToast("Couldn't clear — check your connection."); });
+  }
+
+  function exportPdf(){
+    var type = activeType;
+    var cfg = typeConfig(type);
+    var items = lists[type];
+    if(items.length === 0){
+      showToast('Add at least one item before saving a PDF.');
+      return;
+    }
+
+    var jsPDFCtor = window.jspdf.jsPDF;
+    var doc = new jsPDFCtor();
+
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(17);
+    doc.setTextColor(30,30,28);
+    doc.text(shopName || 'Repair Shop', 14, 20);
+
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(11.5);
+    doc.setTextColor(60,60,60);
+    doc.text(cfg.pdfTitle, 14, 28);
+
+    doc.setFontSize(9);
+    doc.setTextColor(130,130,130);
+    doc.text('Generated: ' + displayDate(), 14, 34);
+
+    doc.autoTable({
+      startY: 40,
+      head: [['#', 'Item', 'Qty', 'Date added']],
+      body: items.map(function(it, i){ return [i+1, it.name, it.qty, it.date]; }),
+      theme: 'grid',
+      headStyles: { fillColor: cfg.pdfAccent, textColor: 255, fontStyle: 'bold' },
+      styles: { fontSize: 10, cellPadding: 5 },
+      columnStyles: { 0: { cellWidth: 12 }, 2: { cellWidth: 20, halign: 'right' }, 3: { cellWidth: 32 } }
+    });
+
+    var totalQty = items.reduce(function(sum, it){ return sum + Number(it.qty); }, 0);
+    var finalY = doc.lastAutoTable.finalY || 40;
+    doc.setFontSize(10);
+    doc.setTextColor(80,80,80);
+    doc.text('Total items: ' + items.length + '   Total quantity: ' + totalQty, 14, finalY + 10);
+
+    var filename = cfg.filePrefix + '_List_' + todayIso() + '.pdf';
+    doc.save(filename);
+
+    if(db){
+      if(type === activeType) editingId = null;
+      db.ref('lists/' + type).remove()
+        .then(function(){ showToast('Saved ' + filename + ' — list cleared for your next order.'); })
+        .catch(function(){ showToast('PDF saved, but clearing the list failed — clear it manually.'); });
+    }
+  }
+
+  // ---------- Wire up ----------
+  addForm.addEventListener('submit', addItem);
+  clearBtn.addEventListener('click', openClearConfirm);
+  saveBtn.addEventListener('click', exportPdf);
+  confirmCancel.addEventListener('click', closeConfirm);
+  confirmYes.addEventListener('click', confirmClearAction);
+  confirmOverlay.addEventListener('click', function(e){ if(e.target === confirmOverlay) closeConfirm(); });
+  shopNameInput.addEventListener('change', saveShopName);
+  shopNameInput.addEventListener('blur', saveShopName);
+
+  buildTabs();
+  render();
+})();
+</script>
+</body>
+</html>
