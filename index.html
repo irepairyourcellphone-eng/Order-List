@@ -83,6 +83,7 @@
   .tab[data-type="glassprotectors"] .tab-dot{background:#3FBAC9;}
   .tab[data-type="cables"] .tab-dot{background:#CD6B95;}
   .tab[data-type="generalparts"] .tab-dot{background:#B98F5E;}
+  .tab[data-type="mobilephones"] .tab-dot{background:#5B6EE1;}
 
   .tab.active[data-type="general"]{color:#136259;}
   .tab.active[data-type="lcd"]{color:#8C5A0E;}
@@ -92,6 +93,7 @@
   .tab.active[data-type="glassprotectors"]{color:#155F69;}
   .tab.active[data-type="cables"]{color:#7A3355;}
   .tab.active[data-type="generalparts"]{color:#6B4E2A;}
+  .tab.active[data-type="mobilephones"]{color:#2E3B85;}
 
   /* ---------- Ticket card ---------- */
   .ticket{
@@ -106,6 +108,7 @@
   .ticket.type-glassprotectors{ --accent:#3FBAC9; --accent-btn:#1F8695; --accent-text:#fff; }
   .ticket.type-cables{ --accent:#CD6B95; --accent-btn:#A84770; --accent-text:#fff; }
   .ticket.type-generalparts{ --accent:#B98F5E; --accent-btn:#8C6A3E; --accent-text:#fff; }
+  .ticket.type-mobilephones{ --accent:#5B6EE1; --accent-btn:#3D4EB0; --accent-text:#fff; }
 
   .ticket-accent{height:5px; background:var(--accent);}
   .ticket-body{padding:22px 22px 20px;}
@@ -185,6 +188,14 @@
     text-align:center; margin-top:18px; font-family:'IBM Plex Mono'; font-size:0.74rem; color:#6E7882;
   }
 
+  .save-all-row{display:flex; justify-content:center; gap:10px; margin-top:16px; flex-wrap:wrap;}
+  .save-all-btn{
+    background:var(--bg-alt); color:#D3DADD; border:1.5px solid rgba(255,255,255,0.14); border-radius:8px;
+    padding:10px 18px; font-family:'Space Grotesk'; font-weight:600; font-size:0.85rem; cursor:pointer;
+    transition:background .15s ease;
+  }
+  .save-all-btn:hover{background:#333944;}
+
   /* ---------- Toast ---------- */
   .toast{
     position:fixed; bottom:20px; left:50%; transform:translate(-50%, 16px); background:#26282B; color:#FAF6EE;
@@ -204,6 +215,23 @@
   .modal h3{font-family:'Space Grotesk'; margin:0 0 8px; font-size:1.02rem;}
   .modal p{font-size:0.86rem; color:var(--ink-soft); margin:0 0 18px; line-height:1.45;}
   .modal-actions{display:flex; justify-content:flex-end; gap:8px;}
+
+  .modal.modal-wide{max-width:520px; max-height:82vh; display:flex; flex-direction:column;}
+  .history-modal-header{display:flex; align-items:center; justify-content:space-between; margin-bottom:14px; flex-shrink:0;}
+  .history-modal-header h3{margin:0;}
+  .history-close-btn{background:none; border:none; cursor:pointer; font-size:1.05rem; color:var(--ink-soft); width:28px; height:28px; border-radius:7px;}
+  .history-close-btn:hover{background:rgba(0,0,0,0.06);}
+  .history-list{overflow-y:auto; flex:1; display:flex; flex-direction:column; gap:8px; margin:-4px; padding:4px;}
+  .history-row{
+    display:flex; align-items:center; justify-content:space-between; gap:10px; padding:11px 12px;
+    border:1.5px solid var(--paper-line); border-radius:10px; background:#fff;
+  }
+  .history-row-main{display:flex; align-items:center; gap:10px; min-width:0;}
+  .history-row-text{min-width:0;}
+  .history-row-title{font-family:'Space Grotesk'; font-weight:600; font-size:0.87rem; color:var(--ink); white-space:nowrap; overflow:hidden; text-overflow:ellipsis;}
+  .history-row-meta{font-family:'IBM Plex Mono'; font-size:0.72rem; color:var(--ink-soft); margin-top:2px; white-space:nowrap;}
+  .history-row-actions{display:flex; gap:2px; flex-shrink:0;}
+  .history-empty{text-align:center; color:var(--ink-soft); font-family:'IBM Plex Mono'; font-size:0.85rem; font-style:italic; padding:26px 0;}
 
   @media (max-width:480px){
     .ticket-body{padding:18px 16px 16px;}
@@ -271,10 +299,26 @@
     </div>
   </div>
 
+  <div class="save-all-row">
+    <button class="save-all-btn" id="prevOrdersBtn">Previous Orders</button>
+    <button class="save-all-btn" id="saveAllBtn">Save All Lists as PDF</button>
+  </div>
+
   <footer class="hint">Shared with anyone who opens this same web address — changes appear on every device instantly.</footer>
 </div>
 
 <div class="toast" id="toast"></div>
+
+<div class="modal-overlay" id="historyOverlay">
+  <div class="modal modal-wide">
+    <div class="history-modal-header">
+      <h3>Previous Orders</h3>
+      <button class="history-close-btn" id="historyCloseBtn" title="Close">✕</button>
+    </div>
+    <div class="history-list" id="historyList"></div>
+    <div class="history-empty" id="historyEmpty" style="display:none;">No saved orders yet — records appear here after you save a list as PDF.</div>
+  </div>
+</div>
 
 <div class="modal-overlay" id="confirmOverlay">
   <div class="modal">
@@ -322,7 +366,8 @@
     { id:'cases',           tabLabel:'Cases List',             shortLabel:'Cases',            pdfTitle:'Cases Order List',                  filePrefix:'Cases',           pdfAccent:[74,122,71] },
     { id:'glassprotectors', tabLabel:'Glass Protectors List',  shortLabel:'Glass Protectors', pdfTitle:'Glass Protectors Order List',       filePrefix:'GlassProtectors', pdfAccent:[31,134,149] },
     { id:'cables',          tabLabel:'Cables List',            shortLabel:'Cables',           pdfTitle:'Cables Order List',                 filePrefix:'Cables',          pdfAccent:[168,71,112] },
-    { id:'generalparts',    tabLabel:'Phone Parts List',       shortLabel:'Phone Parts',      pdfTitle:'Phone Parts Order List',            filePrefix:'PhoneParts',      pdfAccent:[140,106,62] }
+    { id:'generalparts',    tabLabel:'Phone Parts List',       shortLabel:'Phone Parts',      pdfTitle:'Phone Parts Order List',            filePrefix:'PhoneParts',      pdfAccent:[140,106,62] },
+    { id:'mobilephones',    tabLabel:'Mobile Phones List',     shortLabel:'Mobile Phones',    pdfTitle:'Mobile Phones Order List',          filePrefix:'MobilePhones',    pdfAccent:[61,78,176] }
   ];
 
   function typeConfig(id){
@@ -337,6 +382,7 @@
   var activeType = LIST_TYPES[0].id;
   var pendingClearType = null;
   var editingId = null;
+  var historyEntries = [];
 
   // ---------- DOM ----------
   var shopNameInput = document.getElementById('shopNameInput');
@@ -351,6 +397,12 @@
   var totalsText = document.getElementById('totalsText');
   var clearBtn = document.getElementById('clearBtn');
   var saveBtn = document.getElementById('saveBtn');
+  var saveAllBtn = document.getElementById('saveAllBtn');
+  var prevOrdersBtn = document.getElementById('prevOrdersBtn');
+  var historyOverlay = document.getElementById('historyOverlay');
+  var historyCloseBtn = document.getElementById('historyCloseBtn');
+  var historyList = document.getElementById('historyList');
+  var historyEmpty = document.getElementById('historyEmpty');
   var toast = document.getElementById('toast');
   var confirmOverlay = document.getElementById('confirmOverlay');
   var confirmTitle = document.getElementById('confirmTitle');
@@ -371,6 +423,13 @@
     var months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
     var d = new Date();
     return pad(d.getDate()) + ' ' + months[d.getMonth()] + ' ' + d.getFullYear();
+  }
+  function displayTime(){
+    var d = new Date();
+    var h = d.getHours();
+    var ampm = h >= 12 ? 'PM' : 'AM';
+    var h12 = h % 12; if(h12 === 0) h12 = 12;
+    return h12 + ':' + pad(d.getMinutes()) + ' ' + ampm;
   }
 
   var toastTimer = null;
@@ -416,6 +475,15 @@
         });
         render();
       });
+    });
+
+    db.ref('history').on('value', function(snap){
+      var val = snap.val() || {};
+      var keys = Object.keys(val).sort().reverse();
+      historyEntries = keys.map(function(k){
+        return Object.assign({ id: k }, val[k]);
+      });
+      renderHistory();
     });
   }
 
@@ -630,15 +698,7 @@
       .catch(function(){ showToast("Couldn't clear — check your connection."); });
   }
 
-  function exportPdf(){
-    var type = activeType;
-    var cfg = typeConfig(type);
-    var items = lists[type];
-    if(items.length === 0){
-      showToast('Add at least one item before saving a PDF.');
-      return;
-    }
-
+  function buildSingleCategoryPdf(items, pdfTitle, pdfAccent, generatedLabel){
     var jsPDFCtor = window.jspdf.jsPDF;
     var doc = new jsPDFCtor();
 
@@ -650,18 +710,18 @@
     doc.setFont('helvetica', 'normal');
     doc.setFontSize(11.5);
     doc.setTextColor(60,60,60);
-    doc.text(cfg.pdfTitle, 14, 28);
+    doc.text(pdfTitle, 14, 28);
 
     doc.setFontSize(9);
     doc.setTextColor(130,130,130);
-    doc.text('Generated: ' + displayDate(), 14, 34);
+    doc.text('Generated: ' + generatedLabel, 14, 34);
 
     doc.autoTable({
       startY: 40,
       head: [['#', 'Item', 'Qty', 'Date added']],
       body: items.map(function(it, i){ return [i+1, it.name, it.qty, it.date]; }),
       theme: 'grid',
-      headStyles: { fillColor: cfg.pdfAccent, textColor: 255, fontStyle: 'bold' },
+      headStyles: { fillColor: pdfAccent, textColor: 255, fontStyle: 'bold' },
       styles: { fontSize: 10, cellPadding: 5 },
       columnStyles: { 0: { cellWidth: 12 }, 2: { cellWidth: 20, halign: 'right' }, 3: { cellWidth: 32 } }
     });
@@ -672,8 +732,40 @@
     doc.setTextColor(80,80,80);
     doc.text('Total items: ' + items.length + '   Total quantity: ' + totalQty, 14, finalY + 10);
 
+    return doc;
+  }
+
+  function archiveOrder(cfg, items){
+    if(!db || items.length === 0) return;
+    var totalQty = items.reduce(function(sum, it){ return sum + Number(it.qty); }, 0);
+    db.ref('history').push({
+      typeId: cfg.id,
+      typeLabel: cfg.tabLabel,
+      pdfTitle: cfg.pdfTitle,
+      filePrefix: cfg.filePrefix,
+      pdfAccent: cfg.pdfAccent,
+      items: items.map(function(it){ return { name: it.name, qty: it.qty, date: it.date }; }),
+      totalItems: items.length,
+      totalQty: totalQty,
+      savedDate: displayDate(),
+      savedTime: displayTime(),
+      savedIso: todayIso()
+    }).catch(function(){ /* archiving is best-effort; don't block the save flow */ });
+  }
+
+  function exportPdf(){
+    var type = activeType;
+    var cfg = typeConfig(type);
+    var items = lists[type];
+    if(items.length === 0){
+      showToast('Add at least one item before saving a PDF.');
+      return;
+    }
+
+    var doc = buildSingleCategoryPdf(items, cfg.pdfTitle, cfg.pdfAccent, displayDate());
     var filename = cfg.filePrefix + '_List_' + todayIso() + '.pdf';
     doc.save(filename);
+    archiveOrder(cfg, items);
 
     if(db){
       if(type === activeType) editingId = null;
@@ -683,10 +775,226 @@
     }
   }
 
+  function buildCombinedPdf(categoriesData, generatedLabel){
+    var jsPDFCtor = window.jspdf.jsPDF;
+    var doc = new jsPDFCtor();
+    var pageHeight = doc.internal.pageSize.getHeight();
+
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(18);
+    doc.setTextColor(30,30,28);
+    doc.text(shopName || 'Repair Shop', 14, 20);
+
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(11.5);
+    doc.setTextColor(60,60,60);
+    doc.text('Combined Stock Order — Generated: ' + generatedLabel, 14, 28);
+
+    var cursorY = 38;
+    var grandItems = 0, grandQty = 0;
+
+    categoriesData.forEach(function(cat){
+      var items = cat.items;
+
+      if(cursorY > pageHeight - 45){ doc.addPage(); cursorY = 20; }
+
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(12.5);
+      doc.setTextColor(cat.pdfAccent[0], cat.pdfAccent[1], cat.pdfAccent[2]);
+      doc.text(cat.tabLabel, 14, cursorY);
+      cursorY += 5;
+
+      doc.autoTable({
+        startY: cursorY,
+        head: [['#', 'Item', 'Qty', 'Date added']],
+        body: items.map(function(it, i){ return [i+1, it.name, it.qty, it.date]; }),
+        theme: 'grid',
+        headStyles: { fillColor: cat.pdfAccent, textColor: 255, fontStyle: 'bold' },
+        styles: { fontSize: 9.5, cellPadding: 4 },
+        columnStyles: { 0: { cellWidth: 10 }, 2: { cellWidth: 18, halign: 'right' }, 3: { cellWidth: 30 } },
+        margin: { left: 14, right: 14 }
+      });
+
+      cursorY = doc.lastAutoTable.finalY + 12;
+
+      var tQty = items.reduce(function(sum, it){ return sum + Number(it.qty); }, 0);
+      grandItems += items.length;
+      grandQty += tQty;
+    });
+
+    if(cursorY > pageHeight - 20){ doc.addPage(); cursorY = 20; }
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(10);
+    doc.setTextColor(80,80,80);
+    doc.text(
+      'Grand total: ' + grandItems + ' items, ' + grandQty + ' units across ' + categoriesData.length +
+      ' list' + (categoriesData.length === 1 ? '' : 's'),
+      14, cursorY
+    );
+
+    return doc;
+  }
+
+  function archiveCombinedOrder(categoriesData){
+    if(!db) return;
+    var grandItems = 0, grandQty = 0;
+    var categoriesForStorage = categoriesData.map(function(cat){
+      var tQty = cat.items.reduce(function(sum, it){ return sum + Number(it.qty); }, 0);
+      grandItems += cat.items.length;
+      grandQty += tQty;
+      return {
+        typeId: cat.typeId,
+        typeLabel: cat.tabLabel,
+        filePrefix: cat.filePrefix,
+        pdfAccent: cat.pdfAccent,
+        items: cat.items.map(function(it){ return { name: it.name, qty: it.qty, date: it.date }; }),
+        totalItems: cat.items.length,
+        totalQty: tQty
+      };
+    });
+
+    db.ref('history').push({
+      isCombined: true,
+      categories: categoriesForStorage,
+      totalItems: grandItems,
+      totalQty: grandQty,
+      totalCategories: categoriesForStorage.length,
+      savedDate: displayDate(),
+      savedTime: displayTime(),
+      savedIso: todayIso()
+    }).catch(function(){ /* archiving is best-effort; don't block the save flow */ });
+  }
+
+  function exportAllPdf(){
+    var nonEmpty = LIST_TYPES.filter(function(t){ return lists[t.id].length > 0; });
+    if(nonEmpty.length === 0){
+      showToast('Add items to at least one list before saving.');
+      return;
+    }
+
+    var categoriesData = nonEmpty.map(function(t){
+      return { typeId: t.id, tabLabel: t.tabLabel, pdfAccent: t.pdfAccent, filePrefix: t.filePrefix, items: lists[t.id] };
+    });
+
+    var doc = buildCombinedPdf(categoriesData, displayDate());
+    var filename = 'All_Lists_' + todayIso() + '.pdf';
+    doc.save(filename);
+    archiveCombinedOrder(categoriesData);
+
+    if(db){
+      if(nonEmpty.some(function(t){ return t.id === activeType; })) editingId = null;
+      Promise.all(nonEmpty.map(function(t){ return db.ref('lists/' + t.id).remove(); }))
+        .then(function(){ showToast('Saved ' + filename + ' — included lists cleared for your next order.'); })
+        .catch(function(){ showToast('PDF saved, but clearing some lists failed — clear them manually.'); });
+    }
+  }
+
+  // ---------- Previous Orders (history) ----------
+  function renderHistory(){
+    historyList.innerHTML = '';
+    if(historyEntries.length === 0){
+      historyEmpty.style.display = 'block';
+      return;
+    }
+    historyEmpty.style.display = 'none';
+
+    historyEntries.forEach(function(entry){
+      var row = document.createElement('div');
+      row.className = 'history-row';
+
+      var main = document.createElement('div');
+      main.className = 'history-row-main';
+
+      var dot = document.createElement('span');
+      dot.className = 'tab-dot';
+      dot.style.background = entry.isCombined ? '#55524A' : ('rgb(' + entry.pdfAccent[0] + ',' + entry.pdfAccent[1] + ',' + entry.pdfAccent[2] + ')');
+      main.appendChild(dot);
+
+      var text = document.createElement('div');
+      text.className = 'history-row-text';
+
+      var title = document.createElement('div');
+      title.className = 'history-row-title';
+      title.textContent = entry.isCombined
+        ? ('Combined Order — ' + entry.totalCategories + ' list' + (entry.totalCategories === 1 ? '' : 's'))
+        : entry.typeLabel;
+      text.appendChild(title);
+
+      var meta = document.createElement('div');
+      meta.className = 'history-row-meta';
+      meta.textContent = entry.savedDate + ' · ' + entry.savedTime + ' · ' + entry.totalItems + ' items · ' + entry.totalQty + ' units';
+      text.appendChild(meta);
+
+      main.appendChild(text);
+      row.appendChild(main);
+
+      var actions = document.createElement('div');
+      actions.className = 'history-row-actions';
+
+      var downloadBtn = document.createElement('button');
+      downloadBtn.className = 'row-btn edit-btn';
+      downloadBtn.type = 'button';
+      downloadBtn.title = 'Download this order again as PDF';
+      downloadBtn.textContent = '⬇';
+      downloadBtn.addEventListener('click', function(){ redownloadHistoryEntry(entry); });
+
+      var deleteBtn = document.createElement('button');
+      deleteBtn.className = 'row-btn remove-btn';
+      deleteBtn.type = 'button';
+      deleteBtn.title = 'Delete this record';
+      deleteBtn.textContent = '🗑';
+      deleteBtn.addEventListener('click', function(){ deleteHistoryEntry(entry.id); });
+
+      actions.appendChild(downloadBtn);
+      actions.appendChild(deleteBtn);
+      row.appendChild(actions);
+
+      historyList.appendChild(row);
+    });
+  }
+
+  function redownloadHistoryEntry(entry){
+    var generatedLabel = entry.savedDate + ' (originally saved ' + entry.savedTime + ')';
+
+    if(entry.isCombined){
+      var categoriesData = entry.categories.map(function(cat){
+        return { tabLabel: cat.typeLabel, pdfAccent: cat.pdfAccent, items: cat.items };
+      });
+      var allDoc = buildCombinedPdf(categoriesData, generatedLabel);
+      var allFilename = 'All_Lists_' + entry.savedIso + '.pdf';
+      allDoc.save(allFilename);
+      showToast('Downloaded ' + allFilename + '.');
+      return;
+    }
+
+    var doc = buildSingleCategoryPdf(entry.items, entry.pdfTitle, entry.pdfAccent, generatedLabel);
+    var filename = entry.filePrefix + '_List_' + entry.savedIso + '.pdf';
+    doc.save(filename);
+    showToast('Downloaded ' + filename + '.');
+  }
+
+  function deleteHistoryEntry(id){
+    if(!db) return;
+    db.ref('history/' + id).remove()
+      .then(function(){ showToast('Record deleted.'); })
+      .catch(function(){ showToast("Couldn't delete — check your connection."); });
+  }
+
+  function openHistory(){
+    historyOverlay.classList.add('show');
+  }
+  function closeHistory(){
+    historyOverlay.classList.remove('show');
+  }
+
   // ---------- Wire up ----------
   addForm.addEventListener('submit', addItem);
   clearBtn.addEventListener('click', openClearConfirm);
   saveBtn.addEventListener('click', exportPdf);
+  saveAllBtn.addEventListener('click', exportAllPdf);
+  prevOrdersBtn.addEventListener('click', openHistory);
+  historyCloseBtn.addEventListener('click', closeHistory);
+  historyOverlay.addEventListener('click', function(e){ if(e.target === historyOverlay) closeHistory(); });
   confirmCancel.addEventListener('click', closeConfirm);
   confirmYes.addEventListener('click', confirmClearAction);
   confirmOverlay.addEventListener('click', function(e){ if(e.target === confirmOverlay) closeConfirm(); });
